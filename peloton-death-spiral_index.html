@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Peloton Death Spiral – FY2025</title>
+  <style>
+    :root {
+      --peloton-black: #111;
+      --accent: #e63946;
+      --safe: #2a9d8f;
+      --warn: #e9c46a;
+      --danger: #e63946;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #1a1a1a;
+      color: #eee;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+    header { text-align: center; margin-bottom: 28px; }
+    header h1 { font-size: 2rem; font-weight: 800; color: #fff; }
+    header h1 span { color: var(--accent); }
+    header p { color: #aaa; font-size: 0.9rem; margin-top: 6px; }
+    .badge {
+      display: inline-block; background: var(--accent); color: #fff;
+      font-size: 0.72rem; font-weight: 700; padding: 3px 10px;
+      border-radius: 20px; margin-top: 8px; letter-spacing: 0.5px;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 20px;
+      max-width: 1160px;
+      margin: 0 auto;
+    }
+    @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } }
+
+    /* ── Panels ── */
+    .panel {
+      background: #252525; border-radius: 14px;
+      padding: 22px; border: 1px solid #333;
+    }
+    .panel h2 {
+      font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: #aaa; margin-bottom: 18px;
+    }
+
+    /* ── Section dividers ── */
+    .section-label {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--accent); margin: 18px 0 10px;
+      padding-bottom: 4px; border-bottom: 1px solid #333;
+    }
+
+    /* ── Sliders ── */
+    .control-group { margin-bottom: 18px; }
+    .control-label {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 6px;
+    }
+    .control-label span:first-child { font-size: 0.88rem; color: #ccc; }
+    .control-label .val { font-size: 1rem; font-weight: 700; color: #fff; }
+    input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+    .hint { font-size: 0.72rem; color: #666; margin-top: 4px; }
+
+    /* ── KPI cards ── */
+    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+    .kpi {
+      background: #1e1e1e; border-radius: 10px;
+      padding: 12px 14px; border: 1px solid #333;
+    }
+    .kpi-label { font-size: 0.68rem; color: #888; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; }
+    .kpi-value { font-size: 1.25rem; font-weight: 800; color: #fff; }
+    .kpi-value.safe   { color: var(--safe); }
+    .kpi-value.warn   { color: var(--warn); }
+    .kpi-value.danger { color: var(--danger); }
+    .kpi-delta { font-size: 0.72rem; margin-top: 3px; }
+
+    /* ── Defection flow box ── */
+    .defection-box {
+      background: #1e1e1e; border: 1px solid #444; border-radius: 10px;
+      padding: 14px 16px; margin-bottom: 18px;
+    }
+    .defection-box h3 { font-size: 0.78rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+    .flow-row {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.82rem; margin-bottom: 6px;
+    }
+    .flow-num { font-weight: 700; color: #fff; min-width: 80px; text-align: right; }
+    .flow-label { color: #999; flex: 1; }
+    .flow-arrow { color: #555; font-size: 0.9rem; }
+    .flow-row.highlight .flow-num { color: var(--danger); }
+    .flow-row.highlight-pos .flow-num { color: var(--safe); }
+
+    /* ── Viz ── */
+    .viz-panel { display: flex; flex-direction: column; gap: 18px; }
+    .chart-wrap {
+      background: #1e1e1e; border-radius: 12px;
+      padding: 18px; border: 1px solid #333;
+    }
+    .chart-wrap h3 {
+      font-size: 0.78rem; text-transform: uppercase;
+      letter-spacing: 0.8px; color: #888; margin-bottom: 14px;
+    }
+    canvas { width: 100% !important; }
+
+    /* ── Income table ── */
+    .income-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+    .income-table th {
+      text-align: left; color: #888; font-weight: 600;
+      padding: 5px 8px; border-bottom: 1px solid #333;
+      font-size: 0.72rem; text-transform: uppercase;
+    }
+    .income-table td { padding: 6px 8px; border-bottom: 1px solid #2a2a2a; }
+    .income-table tr.total td { font-weight: 700; border-top: 1px solid #444; border-bottom: none; }
+    .income-table tr.section-header td {
+      color: #888; font-size: 0.7rem; text-transform: uppercase;
+      letter-spacing: 0.5px; padding-top: 12px;
+    }
+    .neg { color: var(--danger); }
+    .pos { color: var(--safe); }
+
+    /* ── Status banner ── */
+    .status-banner {
+      border-radius: 10px; padding: 14px 18px;
+      font-size: 0.88rem; font-weight: 600;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .status-banner.safe   { background: rgba(42,157,143,0.15); border: 1px solid var(--safe); color: var(--safe); }
+    .status-banner.warn   { background: rgba(233,196,106,0.15); border: 1px solid var(--warn); color: var(--warn); }
+    .status-banner.danger { background: rgba(230,57,70,0.15);   border: 1px solid var(--danger); color: var(--danger); }
+    .status-icon { font-size: 1.3rem; }
+
+    /* ── Scenario buttons ── */
+    .scenario-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .scenario-btn {
+      flex: 1; min-width: 70px; padding: 7px 8px;
+      border-radius: 8px; border: 1px solid #444;
+      background: #1e1e1e; color: #ccc; font-size: 0.75rem;
+      font-weight: 600; cursor: pointer; text-align: center; transition: all 0.15s;
+    }
+    .scenario-btn:hover { border-color: var(--accent); color: #fff; }
+    .scenario-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .divider { height: 1px; background: #333; margin: 14px 0; }
+
+    footer {
+      text-align: center; color: #555; font-size: 0.72rem;
+      margin-top: 28px; max-width: 1160px; margin-left: auto; margin-right: auto;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Peloton <span>Death Spiral</span> Simulator</h1>
+  <p>Based on FY2025 10-K (Fiscal Year Ended June 30, 2025)</p>
+  <span class="badge">DEMAND-DRIVEN · SUBSCRIPTION MODEL</span>
+</header>
+
+<div class="layout">
+
+  <!-- LEFT: Controls -->
+  <div class="panel">
+    <h2>🎛 Inputs</h2>
+
+    <div class="scenario-row">
+      <button class="scenario-btn active" onclick="setScenario('actual')">FY25 Actual</button>
+      <button class="scenario-btn" onclick="setScenario('mild')">Mild Churn</button>
+      <button class="scenario-btn" onclick="setScenario('severe')">Severe Churn</button>
+      <button class="scenario-btn" onclick="setScenario('recovery')">Recovery</button>
+    </div>
+
+    <!-- SECTION 1: USER BASE -->
+    <div class="section-label">📊 User Base</div>
+
+    <div class="control-group">
+      <div class="control-label">
+        <span>Total Peloton Members (hardware owners)</span>
+        <span class="val" id="membersLabel">6,200K</span>
+      </div>
+      <input type="range" id="membersSlider" min="1000" max="10000" step="100" value="6200"
+             oninput="update()">
+      <div class="hint">FY25 10-K: ~6.2M total Members who own Peloton hardware</div>
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">
+        <span>Defection Rate (% of Members who stop using Peloton)</span>
+        <span class="val" id="defectionLabel">5.9%</span>
+      </div>
+      <input type="range" id="defectionSlider" min="0" max="40" step="0.1" value="5.9"
+             oninput="update()">
+      <div class="hint">FY25 actual: ~5.9% annual paid sub loss (2,976K → 2,800K). Avg net monthly churn ~1.4%</div>
+    </div>
+
+    <!-- SECTION 2: SUBSCRIPTION ECONOMICS -->
+    <div class="section-label">💳 Subscription Economics</div>
+
+    <div class="control-group">
+      <div class="control-label">
+        <span>Paid Connected Fitness Subscribers</span>
+        <span class="val" id="subLabel">2,800K</span>
+      </div>
+      <input type="range" id="subSlider" min="500" max="4000" step="50" value="2800"
+             oninput="update()">
+      <div class="hint">FY25 actual: 2,800K (down from 2,976K in FY24)</div>
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">
+        <span>Monthly Subscription Price ($/sub)</span>
+        <span class="val" id="priceLabel">$44.00</span>
+      </div>
+      <input type="range" id="priceSlider" min="20" max="70" step="0.5" value="44"
+             oninput="update()">
+      <div class="hint">Current All-Access Membership price: $44/mo</div>
+    </div>
+
+    <!-- SECTION 3: HARDWARE -->
+    <div class="section-label">🚲 Hardware</div>
+
+    <div class="control-group">
+      <div class="control-label">
+        <span>Hardware Units Sold (K units/yr)</span>
+        <span class="val" id="hwLabel">~400K</span>
+      </div>
+      <input type="range" id="hwSlider" min="50" max="1200" step="25" value="400"
+             oninput="update()">
+      <div class="hint">FY25 implied ~400K units from $817M hardware revenue</div>
+    </div>
+
+    <div class="divider"></div>
+    <h2>📌 Fixed Cost Assumptions (from 10-K)</h2>
+
+    <div class="control-group">
+      <div class="control-label">
+        <span>Subscription Fixed Costs ($M/yr)</span>
+        <span class="val" id="subFCLabel">$380M</span>
+      </div>
+      <input type="range" id="subFCSlider" min="100" max="700" step="10" value="380"
+             oninput="update()">
+      <div class="hint">Studio, instructors, content, music royalties (est. from $516.6M sub COGS)</div>
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">
+        <span>Operating Fixed Costs ($M/yr)</span>
+        <span class="val" id="opFCLabel">$900M</span>
+      </div>
+      <input type="range" id="opFCSlider" min="300" max="1800" step="25" value="900"
+             oninput="update()">
+      <div class="hint">R&D, S&M, G&A — FY25 total OpEx $1,304.5M (incl. variable)</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Outputs -->
+  <div class="viz-panel">
+
+    <!-- Defection Flow Box -->
+    <div class="defection-box">
+      <h3>🔄 Member → Subscriber Defection Flow</h3>
+      <div class="flow-row">
+        <span class="flow-num" id="flowMembers">6,200K</span>
+        <span class="flow-label">Total Peloton Members (hardware owners)</span>
+      </div>
+      <div class="flow-row highlight">
+        <span class="flow-num" id="flowDefectors">−366K</span>
+        <span class="flow-label">Members who defect (stop paying) at <span id="flowDefRate">5.9%</span> rate</span>
+      </div>
+      <div class="flow-row">
+        <span class="flow-num" id="flowConvRate">45.2%</span>
+        <span class="flow-label">Conversion rate (paid subs ÷ total members)</span>
+      </div>
+      <div class="flow-row highlight">
+        <span class="flow-num" id="flowSubsLost">−176K</span>
+        <span class="flow-label">Paid subscribers lost from defection</span>
+        <span class="flow-arrow">→ ↑ Fixed cost/sub</span>
+      </div>
+      <div class="flow-row highlight-pos">
+        <span class="flow-num" id="flowNetSubs">2,800K</span>
+        <span class="flow-label">Remaining paid subscribers absorbing fixed costs</span>
+      </div>
+    </div>
+
+    <!-- Status Banner -->
+    <div class="status-banner safe" id="statusBanner">
+      <span class="status-icon">✅</span>
+      <span id="statusText">Loading...</span>
+    </div>
+
+    <!-- KPI Grid -->
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-label">Sub Revenue / Sub / Mo</div>
+        <div class="kpi-value" id="kpiRevPerSub">$44.00</div>
+        <div class="kpi-delta" style="color:#888">Price charged</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Fixed Cost / Sub / Mo</div>
+        <div class="kpi-value" id="kpiFCPerSub">$22.02</div>
+        <div class="kpi-delta" style="color:#888">The death spiral driver</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Sub Contribution Margin</div>
+        <div class="kpi-value" id="kpiSubCM">$21.98</div>
+        <div class="kpi-delta" style="color:#888">After all sub costs</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Operating Income</div>
+        <div class="kpi-value" id="kpiOpIncome">−$36M</div>
+        <div class="kpi-delta" style="color:#888">FY25 actual: −$36.2M</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Defectors This Year</div>
+        <div class="kpi-value" id="kpiDefectors">366K</div>
+        <div class="kpi-delta" style="color:#888">Members who left</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Paid Subs Lost</div>
+        <div class="kpi-value" id="kpiSubsLost">176K</div>
+        <div class="kpi-delta" style="color:#888">Converted defectors</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Total Revenue</div>
+        <div class="kpi-value" id="kpiTotalRev">$2,491M</div>
+        <div class="kpi-delta" style="color:#888">Sub + Hardware</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Break-even Subs</div>
+        <div class="kpi-value" id="kpiBE">—</div>
+        <div class="kpi-delta" style="color:#888">Min subs to cover FC</div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="chart-wrap">
+      <h3>📉 Revenue vs. Fixed Cost Per Subscriber / Month</h3>
+      <canvas id="barChart" height="160"></canvas>
+    </div>
+
+    <div class="chart-wrap">
+      <h3>🌀 Operating Income Across Subscriber Levels (Death Spiral Curve)</h3>
+      <canvas id="spiralChart" height="200"></canvas>
+    </div>
+
+    <!-- Income Statement -->
+    <div class="chart-wrap">
+      <h3>📋 Projected Income Statement ($M)</h3>
+      <table class="income-table">
+        <thead>
+          <tr>
+            <th>Line Item</th>
+            <th style="text-align:right">FY25 Actual</th>
+            <th style="text-align:right">Simulated</th>
+          </tr>
+        </thead>
+        <tbody id="incomeBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  Sources: Peloton Interactive FY2025 10-K (filed Aug 7, 2025, fiscal year ended June 30, 2025).
+  Fixed cost splits are estimates for educational illustration. All figures in USD millions unless noted.
+  Defection rate = % of total Members who stop paying for any Peloton subscription annually.
+</footer>
+
+<script>
+// ── FY25 10-K Actuals ──────────────────────────────────────────────
+const ACTUAL = {
+  members:    6200,   // ~6.2M total Members (hardware owners)
+  defection:  5.9,    // ~5.9% annual paid sub loss rate
+  subs:       2800,   // Paid Connected Fitness Subscribers (K)
+  price:      44.00,  // $/sub/mo
+  hw:         400,    // K units
+  subFC:      380,    // $M fixed subscription costs
+  opFC:       900,    // $M fixed operating costs
+  // 10-K reported
+  subRevActual:  1673.7,
+  hwRevActual:   817.1,
+  subCOGSActual: 516.6,
+  hwCOGSActual:  705.9,
+  opExActual:    1304.5,
+  opIncActual:   -36.2,
+};
+
+function fmt(n, decimals=0) {
+  if (Math.abs(n) >= 1000) return (n/1000).toFixed(1) + 'B';
+  return n.toFixed(decimals);
+}
+function fmtM(n) { return (n >= 0 ? '' : '−$') + Math.abs(n).toFixed(0) + 'M'; }
+function fmtK(n) { return Math.round(n).toLocaleString() + 'K'; }
+
+// ── Scenario presets ──────────────────────────────────────────────
+function setScenario(s) {
+  document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  const S = {
+    actual:   { members:6200, defection:5.9,  subs:2800, price:44,   hw:400,  subFC:380, opFC:900  },
+    mild:     { members:5800, defection:10.0, subs:2400, price:44,   hw:320,  subFC:380, opFC:900  },
+    severe:   { members:4500, defection:22.0, subs:1600, price:42,   hw:180,  subFC:380, opFC:850  },
+    recovery: { members:7000, defection:3.0,  subs:3400, price:46,   hw:600,  subFC:360, opFC:850  },
+  }[s];
+  document.getElementById('membersSlider').value  = S.members;
+  document.getElementById('defectionSlider').value= S.defection;
+  document.getElementById('subSlider').value      = S.subs;
+  document.getElementById('priceSlider').value    = S.price;
+  document.getElementById('hwSlider').value       = S.hw;
+  document.getElementById('subFCSlider').value    = S.subFC;
+  document.getElementById('opFCSlider').value     = S.opFC;
+  update();
+}
+
+// ── Main update ───────────────────────────────────────────────────
+function update() {
+  const members   = +document.getElementById('membersSlider').value;
+  const defRate   = +document.getElementById('defectionSlider').value;
+  const subs      = +document.getElementById('subSlider').value;
+  const price     = +document.getElementById('priceSlider').value;
+  const hw        = +document.getElementById('hwSlider').value;
+  const subFC     = +document.getElementById('subFCSlider').value;
+  const opFC      = +document.getElementById('opFCSlider').value;
+
+  // ── Label updates ──
+  document.getElementById('membersLabel').textContent  = fmtK(members);
+  document.getElementById('defectionLabel').textContent= defRate.toFixed(1) + '%';
+  document.getElementById('subLabel').textContent      = fmtK(subs);
+  document.getElementById('priceLabel').textContent    = '$' + price.toFixed(2);
+  document.getElementById('hwLabel').textContent       = '~' + fmtK(hw);
+  document.getElementById('subFCLabel').textContent    = '$' + subFC + 'M';
+  document.getElementById('opFCLabel').textContent     = '$' + opFC + 'M';
+
+  // ── Defection flow calculations ──
+  const defectors    = members * (defRate / 100);            // K members who leave
+  const convRate     = subs / members;                       // ratio
+  const subsLost     = defectors * convRate;                 // K paid subs lost from defection
+  const netSubs      = Math.max(subs, 50);                   // K — current paid subs
+
+  // ── Defection flow box ──
+  document.getElementById('flowMembers').textContent  = fmtK(members);
+  document.getElementById('flowDefectors').textContent= '−' + fmtK(defectors);
+  document.getElementById('flowDefRate').textContent  = defRate.toFixed(1) + '%';
+  document.getElementById('flowConvRate').textContent = (convRate * 100).toFixed(1) + '%';
+  document.getElementById('flowSubsLost').textContent = '−' + fmtK(subsLost);
+  document.getElementById('flowNetSubs').textContent  = fmtK(netSubs);
+
+  // ── Revenue ──
+  const hwAvgPrice   = 817.1 / 400;                         // ~$2.04K per unit (from 10-K)
+  const subRevM      = (netSubs * 1000 * price * 12) / 1e6; // $M annual sub revenue
+  const hwRevM       = hw * hwAvgPrice;                     // $M hardware revenue
+  const totalRevM    = subRevM + hwRevM;
+
+  // ── Costs ──
+  const subVarCostPerSub = (ACTUAL.subCOGSActual - ACTUAL_subFC()) / (ACTUAL.subs * 1000 * 12) * 1e6;
+  // Variable sub cost per sub per month (residual after stripping fixed)
+  const subVarM      = (netSubs * 1000 * subVarCostPerSub * 12) / 1e6;
+  const subTotalCOGS = subFC + subVarM;
+
+  const hwVarRate    = (ACTUAL.hwCOGSActual / ACTUAL.hwRevActual); // ~86.4% variable COGS rate
+  const hwCOGSM      = hwRevM * hwVarRate;
+
+  const totalCOGS    = subTotalCOGS + hwCOGSM;
+  const grossProfitM = totalRevM - totalCOGS;
+
+  // OpEx: fixed portion + variable S&M scaling with subs
+  const opVarM       = opFC * 0.35 * (netSubs / ACTUAL.subs); // ~35% of opFC is variable
+  const opFixedM     = opFC * 0.65;
+  const totalOpExM   = opFixedM + opVarM;
+
+  const opIncomeM    = grossProfitM - totalOpExM;
+
+  // ── Per-sub metrics ──
+  const fcPerSubMo   = (subFC * 1e6) / (netSubs * 1000 * 12); // fixed sub cost per sub per month
+  const totalFCPerSubMo = ((subFC + opFixedM) * 1e6) / (netSubs * 1000 * 12);
+  const subCM        = price - fcPerSubMo - subVarCostPerSub;
+
+  // ── Break-even subs ──
+  const totalFC_M    = subFC + opFixedM;
+  const cmPerSubYr   = (price - subVarCostPerSub) * 12 - (hwCOGSM - hwRevM) / (netSubs || 1);
+  const beSubs       = (totalFC_M * 1e6) / ((price - subVarCostPerSub) * 12) / 1000; // K
+
+  // ── KPI coloring ──
+  const spiralActive = fcPerSubMo > price * 0.6;
+  const danger       = opIncomeM < -200 || fcPerSubMo > price;
+  const warn         = opIncomeM < 0 || fcPerSubMo > price * 0.5;
+
+  function colorClass(val, goodThresh, warnThresh, higherIsBetter=true) {
+    if (higherIsBetter) {
+      return val >= goodThresh ? 'safe' : val >= warnThresh ? 'warn' : 'danger';
+    } else {
+      return val <= goodThresh ? 'safe' : val <= warnThresh ? 'warn' : 'danger';
+    }
+  }
+
+  setKPI('kpiRevPerSub',  '$' + price.toFixed(2),        'safe');
+  setKPI('kpiFCPerSub',   '$' + fcPerSubMo.toFixed(2),   colorClass(fcPerSubMo, price*0.3, price*0.6, false));
+  setKPI('kpiSubCM',      '$' + subCM.toFixed(2),        colorClass(subCM, 15, 5));
+  setKPI('kpiOpIncome',   fmtM(opIncomeM),               colorClass(opIncomeM, 0, -100));
+  setKPI('kpiDefectors',  fmtK(defectors),               colorClass(defectors, 200, 500, false));
+  setKPI('kpiSubsLost',   fmtK(subsLost),                colorClass(subsLost, 100, 300, false));
+  setKPI('kpiTotalRev',   '$' + totalRevM.toFixed(0) + 'M', colorClass(totalRevM, 2000, 1500));
+  setKPI('kpiBE',         fmtK(beSubs),                  colorClass(beSubs, netSubs*0.8, netSubs, false));
+
+  // ── Status banner ──
+  const banner = document.getElementById('statusBanner');
+  const statusText = document.getElementById('statusText');
+  if (danger) {
+    banner.className = 'status-banner danger';
+    statusText.textContent = `🚨 DEATH SPIRAL ACTIVE — Fixed cost/sub ($${fcPerSubMo.toFixed(2)}/mo) is crushing margins. ${fmtK(subsLost)} paid subs lost to defection forces remaining ${fmtK(netSubs)} to absorb more overhead.`;
+  } else if (warn) {
+    banner.className = 'status-banner warn';
+    statusText.textContent = `⚠️ SPIRAL RISK — Operating loss of ${fmtM(opIncomeM)}. Defection rate of ${defRate.toFixed(1)}% is eroding the subscriber base. Fixed costs are rising per remaining user.`;
+  } else {
+    banner.className = 'status-banner safe';
+    statusText.textContent = `✅ STABLE — Subscription contribution margin of $${subCM.toFixed(2)}/sub/mo is covering fixed costs. Operating income: ${fmtM(opIncomeM)}.`;
+  }
+
+  // ── Income statement ──
+  const rows = [
+    { label: 'Subscription Revenue', actual: ACTUAL.subRevActual, sim: subRevM, indent: false },
+    { label: 'Hardware Revenue',      actual: ACTUAL.hwRevActual,  sim: hwRevM,  indent: false },
+    { label: 'Total Revenue',         actual: ACTUAL.subRevActual + ACTUAL.hwRevActual, sim: totalRevM, total: true },
+    { label: 'COGS', section: true },
+    { label: 'Subscription COGS',     actual: ACTUAL.subCOGSActual, sim: subTotalCOGS, indent: true, neg: true },
+    { label: 'Hardware COGS',         actual: ACTUAL.hwCOGSActual,  sim: hwCOGSM,       indent: true, neg: true },
+    { label: 'Gross Profit',          actual: ACTUAL.subRevActual + ACTUAL.hwRevActual - ACTUAL.subCOGSActual - ACTUAL.hwCOGSActual, sim: grossProfitM, total: true },
+    { label: 'Operating Expenses', section: true },
+    { label: 'Total OpEx',            actual: ACTUAL.opExActual, sim: totalOpExM, indent: true, neg: true },
+    { label: 'Operating Income',      actual: ACTUAL.opIncActual, sim: opIncomeM, total: true },
+  ];
+
+  const tbody = document.getElementById('incomeBody');
+  tbody.innerHTML = '';
+  rows.forEach(r => {
+    if (r.section) {
+      tbody.innerHTML += `<tr class="section-header"><td colspan="3">${r.label}</td></tr>`;
+      return;
+    }
+    const simClass = r.sim < 0 ? 'neg' : r.sim > 0 && r.total ? 'pos' : '';
+    const actClass = r.actual < 0 ? 'neg' : '';
+    const indent   = r.indent ? '&nbsp;&nbsp;&nbsp;' : '';
+    tbody.innerHTML += `
+      <tr class="${r.total ? 'total' : ''}">
+        <td>${indent}${r.label}</td>
+        <td style="text-align:right" class="${actClass}">${r.actual < 0 ? '(' + Math.abs(r.actual).toFixed(1) + ')' : r.actual.toFixed(1)}</td>
+        <td style="text-align:right" class="${simClass}">${r.sim < 0 ? '(' + Math.abs(r.sim).toFixed(1) + ')' : r.sim.toFixed(1)}</td>
+      </tr>`;
+  });
+
+  // ── Charts ──
+  drawBarChart(price, fcPerSubMo, subVarCostPerSub);
+  drawSpiralChart(price, subFC, opFixedM, subVarCostPerSub, netSubs, beSubs);
+}
+
+function ACTUAL_subFC() { return 380; }
+
+function setKPI(id, val, cls) {
+  const el = document.getElementById(id);
+  el.textContent = val;
+  el.className = 'kpi-value ' + cls;
+}
+
+// ── Bar Chart ─────────────────────────────────────────────────────
+let barCtx, spiralCtx, barChart, spiralChart;
+
+function drawBarChart(price, fcPerSub, varCostPerSub) {
+  const canvas = document.getElementById('barChart');
+  if (!barCtx) barCtx = canvas.getContext('2d');
+
+  const W = canvas.offsetWidth || 600;
+  canvas.width  = W * window.devicePixelRatio;
+  canvas.height = 160 * window.devicePixelRatio;
+  canvas.style.height = '160px';
+  const ctx = barCtx;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  ctx.clearRect(0, 0, W, 160);
+
+  const labels   = ['Monthly Price\n(Revenue/Sub)', 'Fixed Cost/Sub\n(Spiral Driver)', 'Variable Cost/Sub', 'Contribution\nMargin'];
+  const values   = [price, fcPerSub, varCostPerSub, price - fcPerSub - varCostPerSub];
+  const colors   = ['#2a9d8f', fcPerSub > price * 0.6 ? '#e63946' : '#e9c46a', '#888', price - fcPerSub - varCostPerSub < 0 ? '#e63946' : '#2a9d8f'];
+
+  const maxVal   = Math.max(...values.map(Math.abs), 10) * 1.2;
+  const barW     = (W - 80) / labels.length - 12;
+  const chartH   = 110;
+  const baseY    = 120;
+
+  labels.forEach((lbl, i) => {
+    const x   = 40 + i * ((W - 80) / labels.length) + 6;
+    const val = values[i];
+    const h   = Math.abs(val) / maxVal * chartH;
+    const y   = val >= 0 ? baseY - h : baseY;
+
+    ctx.fillStyle = colors[i];
+    ctx.beginPath();
+    ctx.roundRect(x, y, barW, h, 4);
+    ctx.fill();
+
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px Segoe UI';
+    ctx.textAlign = 'center';
+    ctx.fillText((val >= 0 ? '$' : '-$') + Math.abs(val).toFixed(2), x + barW / 2, val >= 0 ? y - 5 : y + h + 14);
+
+    ctx.fillStyle = '#888';
+    ctx.font = '9px Segoe UI';
+    lbl.split('\n').forEach((line, li) => {
+      ctx.fillText(line, x + barW / 2, baseY + 14 + li * 12);
+    });
+  });
+
+  // baseline
+  ctx.strokeStyle = '#444';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(30, baseY); ctx.lineTo(W - 10, baseY);
+  ctx.stroke();
+}
+
+// ── Spiral Chart ──────────────────────────────────────────────────
+function drawSpiralChart(price, subFC, opFixedM, varCostPerSub, currentSubs, beSubs) {
+  const canvas = document.getElementById('spiralChart');
+  if (!spiralCtx) spiralCtx = canvas.getContext('2d');
+
+  const W = canvas.offsetWidth || 700;
+  canvas.width  = W * window.devicePixelRatio;
+  canvas.height = 200 * window.devicePixelRatio;
+  canvas.style.height = '200px';
+  const ctx = spiralCtx;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  ctx.clearRect(0, 0, W, 200);
+
+  const totalFC  = subFC + opFixedM;
+  const steps    = 60;
+  const minSubs  = 200;
+  const maxSubs  = 4500;
+  const points   = [];
+
+  for (let i = 0; i <= steps; i++) {
+    const s = minSubs + (maxSubs - minSubs) * i / steps; // K subs
+    const subRevM  = s * 1000 * price * 12 / 1e6;
+    const varCostM = s * 1000 * varCostPerSub * 12 / 1e6;
+    const opInc    = subRevM - varCostM - totalFC;
+    points.push({ subs: s, opInc });
+  }
+
+  const incomes  = points.map(p => p.opInc);
+  const minInc   = Math.min(...incomes) * 1.1;
+  const maxInc   = Math.max(...incomes) * 1.1;
+  const padL = 55, padR = 20, padT = 20, padB = 40;
+  const cW   = W - padL - padR;
+  const cH   = 200 - padT - padB;
+
+  function xPos(subs) { return padL + (subs - minSubs) / (maxSubs - minSubs) * cW; }
+  function yPos(inc)  { return padT + (1 - (inc - minInc) / (maxInc - minInc)) * cH; }
+
+  // Zero line
+  const zeroY = yPos(0);
+  ctx.strokeStyle = '#444'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(padL, zeroY); ctx.lineTo(W - padR, zeroY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#555'; ctx.font = '9px Segoe UI'; ctx.textAlign = 'right';
+  ctx.fillText('$0', padL - 4, zeroY + 3);
+
+  // Spiral curve — color by zone
+  for (let i = 1; i < points.length; i++) {
+    const p0 = points[i-1], p1 = points[i];
+    ctx.strokeStyle = p1.opInc < 0 ? '#e63946' : '#2a9d8f';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(xPos(p0.subs), yPos(p0.opInc));
+    ctx.lineTo(xPos(p1.subs), yPos(p1.opInc));
+    ctx.stroke();
+  }
+
+  // Current position marker
+  const curX = xPos(currentSubs);
+  const curOpInc = (currentSubs * 1000 * price * 12 / 1e6) - (currentSubs * 1000 * varCostPerSub * 12 / 1e6) - totalFC;
+  const curY = yPos(curOpInc);
+
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(curX, curY, 7, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = curOpInc < 0 ? '#e63946' : '#2a9d8f';
+  ctx.beginPath(); ctx.arc(curX, curY, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 10px Segoe UI'; ctx.textAlign = 'center';
+  ctx.fillText('YOU', curX, curY - 12);
+
+  // Break-even marker
+  if (beSubs >= minSubs && beSubs <= maxSubs) {
+    const beX = xPos(beSubs);
+    ctx.strokeStyle = '#e9c46a'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(beX, padT); ctx.lineTo(beX, padT + cH); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#e9c46a'; ctx.font = '9px Segoe UI'; ctx.textAlign = 'center';
+    ctx.fillText('B/E: ' + fmtK(beSubs), beX, padT + cH + 14);
+  }
+
+  // X-axis labels
+  ctx.fillStyle = '#666'; ctx.font = '9px Segoe UI'; ctx.textAlign = 'center';
+  [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000].forEach(s => {
+    if (s >= minSubs && s <= maxSubs) {
+      ctx.fillText(s + 'K', xPos(s), padT + cH + 14);
+    }
+  });
+
+  // Y-axis labels
+  ctx.textAlign = 'right';
+  [minInc, 0, maxInc].forEach(v => {
+    ctx.fillStyle = v === 0 ? '#888' : '#555';
+    ctx.fillText('$' + v.toFixed(0) + 'M', padL - 4, yPos(v) + 3);
+  });
+
+  // Axis label
+  ctx.fillStyle = '#666'; ctx.font = '9px Segoe UI'; ctx.textAlign = 'center';
+  ctx.fillText('Paid Connected Fitness Subscribers (K)', padL + cW / 2, 200 - 4);
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  update();
+  window.addEventListener('resize', update);
+});
+</script>
+</body>
+</html>
